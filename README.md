@@ -15,6 +15,7 @@
 - Automatic Port Forwarding
 - Volume mounts
 - Multiple instances
+-- Automatic Pod network routing for Kubernetes (macOS)
 - Support for multiple container runtimes
   - [Docker](https://docker.com) (with optional Kubernetes)
   - [Containerd](https://containerd.io) (with optional Kubernetes)

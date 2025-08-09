@@ -21,6 +21,7 @@ import (
 	"github.com/abiosoft/colima/environment/vm/lima"
 	"github.com/abiosoft/colima/environment/vm/lima/limautil"
 	"github.com/abiosoft/colima/util"
+	"github.com/abiosoft/colima/util/routing"
 	"github.com/docker/go-units"
 	log "github.com/sirupsen/logrus"
 )
@@ -146,6 +147,12 @@ func (c colimaApp) Start(conf config.Config) error {
 
 	log.Println("done")
 
+	// Setup Pod network routing after VM and containers are started
+	if err := routing.SetupPodRoutingForProfile(ctx, conf); err != nil {
+		log.Warnf("Failed to setup Pod network routing: %v", err)
+		// Don't fail startup for routing issues
+	}
+
 	if err := generateSSHConfig(conf.SSHConfig); err != nil {
 		log.Trace("error generating ssh_config: %w", err)
 	}
@@ -155,6 +162,18 @@ func (c colimaApp) Start(conf config.Config) error {
 func (c colimaApp) Stop(force bool) error {
 	ctx := context.Background()
 	log.Println("stopping", config.CurrentProfile().DisplayName)
+
+	// Get current config for routing cleanup
+	conf, err := configmanager.LoadFrom(config.CurrentProfile().File())
+	if err != nil {
+		log.Warnf("Failed to load config for routing cleanup: %v", err)
+	} else {
+		// Cleanup Pod network routing before stopping containers
+		if err := routing.CleanupPodRoutingForProfile(ctx, conf); err != nil {
+			log.Warnf("Failed to cleanup Pod network routing: %v", err)
+			// Don't fail shutdown for routing issues
+		}
+	}
 
 	// the order for stop is:
 	//   container stop -> vm stop
